@@ -2,6 +2,8 @@
  * Esta configuración usa dos zonas de Azure para saltar la restricción de 4
  * vCPUs por zona. Ambas zonas se comunican entre sí usando peering.
  * Así, Jenkins podría comunicarse con el cluster Kubernetes y vice versa.
+ * 
+ * NOTA: East US no me deja usar un Kubernetes muy viejo, así que se actualizó.
  */
 
 
@@ -52,14 +54,15 @@ resource "azurerm_kubernetes_cluster" "aks-k8s" {
     vnet_subnet_id      = azurerm_subnet.subnet-k8s.id
     enable_auto_scaling = true
     min_count           = 1
-    max_count           = 2
+    max_count           = 1
   }
 
+
   network_profile {
-    network_plugin = "azure"
-    network_policy = "azure"
-    service_cidr = var.aks_netp_service_cidr
-    dns_service_ip = var.aks_netp_dns_service_ip
+    network_plugin     = "azure"
+    network_policy     = "azure"
+    service_cidr       = var.aks_netp_service_cidr
+    dns_service_ip     = var.aks_netp_dns_service_ip
     docker_bridge_cidr = var.aks_netp_docker_bridge_cidr
   }
 
@@ -67,6 +70,20 @@ resource "azurerm_kubernetes_cluster" "aks-k8s" {
     client_id     = var.aks_sp_client_id
     client_secret = var.aks_sp_client_secret
   }
+}
+
+# Node pool "Adicional"
+
+resource "azurerm_kubernetes_cluster_node_pool" "aks-k8s-np2" {
+  name                  = var.aks_np2_name
+  kubernetes_cluster_id = azurerm_kubernetes_cluster.aks-k8s.id
+  node_count            = var.aks_np2_node_count
+  vm_size               = var.aks_np2_vm_size
+  vnet_subnet_id        = azurerm_subnet.subnet-k8s.id
+  enable_auto_scaling   = true
+  min_count             = 1
+  max_count             = 1
+  max_pods              = 80
 }
 
 # Jenkins server
@@ -85,70 +102,70 @@ resource "azurerm_subnet" "subnet-jenkins" {
 }
 
 resource "azurerm_public_ip" "pubip-jenkinssrv" {
-    name = var.jenkins_pubip_name
-    resource_group_name = azurerm_resource_group.rg-cicd.name
-    location = var.jenkins_location
-    domain_name_label = var.pubip_dns_label
-    allocation_method = "Static"
+  name                = var.jenkins_pubip_name
+  resource_group_name = azurerm_resource_group.rg-cicd.name
+  location            = var.jenkins_location
+  domain_name_label   = var.pubip_dns_label
+  allocation_method   = "Static"
 }
 
 resource "azurerm_network_interface" "veth-jenkinssrv" {
-    name = var.jenkins_veth_name
-    resource_group_name = azurerm_resource_group.rg-cicd.name
-    location = var.jenkins_location
+  name                = var.jenkins_veth_name
+  resource_group_name = azurerm_resource_group.rg-cicd.name
+  location            = var.jenkins_location
 
-    ip_configuration {
-      name = "internal"
-      subnet_id = azurerm_subnet.subnet-jenkins.id
-      private_ip_address_allocation = "Dynamic"
-      public_ip_address_id = azurerm_public_ip.pubip-jenkinssrv.id
-    }
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.subnet-jenkins.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.pubip-jenkinssrv.id
+  }
 }
 
 resource "azurerm_linux_virtual_machine" "jenkins-vm" {
-    name = var.jenkins_vm_name
-    resource_group_name = azurerm_resource_group.rg-cicd.name
-    location = var.jenkins_location
-    size = var.jenkins_vm_instance_type
-    network_interface_ids = [ azurerm_network_interface.veth-jenkinssrv.id ]
-    computer_name = var.jenkins_vm_name
+  name                  = var.jenkins_vm_name
+  resource_group_name   = azurerm_resource_group.rg-cicd.name
+  location              = var.jenkins_location
+  size                  = var.jenkins_vm_instance_type
+  network_interface_ids = [azurerm_network_interface.veth-jenkinssrv.id]
+  computer_name         = var.jenkins_vm_name
 
-    os_disk {
-        caching = "ReadWrite"
-        storage_account_type = "Standard_LRS"
-    }
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
 
-    source_image_reference {
-        publisher = "Canonical"
-        offer = "0001-com-ubuntu-server-jammy"
-        sku = "22_04-lts"
-        version = "latest"
-    }
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts"
+    version   = "latest"
+  }
 
-    admin_username = var.jenkins_vm_admin_username
-    admin_ssh_key {
-        username = var.jenkins_vm_admin_username
-        public_key = file(var.jenkins_vm_admin_public_key)
-    }
+  admin_username = var.jenkins_vm_admin_username
+  admin_ssh_key {
+    username   = var.jenkins_vm_admin_username
+    public_key = file(var.jenkins_vm_admin_public_key)
+  }
 }
 
 # Connect both vnets using network peering
 resource "azurerm_virtual_network_peering" "netpeer-aks-jenkins" {
-  name = var.vnetpeer_aks2jenkins_name
-  resource_group_name = azurerm_resource_group.rg-cicd.name
-  virtual_network_name = azurerm_virtual_network.vnet-k8s.name
-  remote_virtual_network_id = azurerm_virtual_network.vnet-jenkins.id
+  name                         = var.vnetpeer_aks2jenkins_name
+  resource_group_name          = azurerm_resource_group.rg-cicd.name
+  virtual_network_name         = azurerm_virtual_network.vnet-k8s.name
+  remote_virtual_network_id    = azurerm_virtual_network.vnet-jenkins.id
   allow_virtual_network_access = true
-  allow_forwarded_traffic = true
-  allow_gateway_transit = false
+  allow_forwarded_traffic      = true
+  allow_gateway_transit        = false
 }
 
 resource "azurerm_virtual_network_peering" "netpeer-jenkins-aks" {
-  name = var.vnetpeer_jenkins2aks_name
-  resource_group_name = azurerm_resource_group.rg-cicd.name
-  virtual_network_name = azurerm_virtual_network.vnet-jenkins.name
-  remote_virtual_network_id = azurerm_virtual_network.vnet-k8s.id
+  name                         = var.vnetpeer_jenkins2aks_name
+  resource_group_name          = azurerm_resource_group.rg-cicd.name
+  virtual_network_name         = azurerm_virtual_network.vnet-jenkins.name
+  remote_virtual_network_id    = azurerm_virtual_network.vnet-k8s.id
   allow_virtual_network_access = true
-  allow_forwarded_traffic = true
-  allow_gateway_transit = false
+  allow_forwarded_traffic      = true
+  allow_gateway_transit        = false
 }

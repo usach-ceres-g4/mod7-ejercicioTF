@@ -47,12 +47,19 @@ variable "acr_admin_enabled" {}
 variable "aks_name" {}
 variable "aks_dns_prefix" {}
 
-## Node pool
+## Default node pool
 variable "aks_np_name" {}
 variable "aks_np_node_count" {}
 variable "aks_np_vm_size" {}
 variable "aks_np_min_count" {}
 variable "aks_np_max_count" {}
+
+## Extra noode pool
+variable "aks_np2_name" {}
+variable "aks_np2_node_count" {}
+variable "aks_np2_vm_size" {}
+variable "aks_np2_min_count" {}
+variable "aks_np2_max_count" {}
 
 ## Network profile
 variable "aks_netp_service_cidr" {}

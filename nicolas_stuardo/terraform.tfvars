@@ -18,11 +18,19 @@ acr_admin_enabled = true
 
 aks_name = "aks-sec2"
 aks_dns_prefix = "aks1" 
+
 aks_np_name = "default"
 aks_np_node_count = 1
 aks_np_vm_size = "Standard_B2s"
 aks_np_min_count = 1
-aks_np_max_count = 2
+aks_np_max_count = 1
+
+aks_np2_name = "adicional"
+aks_np2_node_count = 1
+aks_np2_vm_size = "Standard_B2s"
+aks_np2_min_count = 1
+aks_np2_max_count = 1
+
 aks_netp_service_cidr = "10.0.0.0/20"
 aks_netp_dns_service_ip = "10.0.0.10"
 aks_netp_docker_bridge_cidr = "172.17.0.1/16"
