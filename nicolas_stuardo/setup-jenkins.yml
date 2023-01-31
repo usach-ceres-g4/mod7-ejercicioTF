@@ -1,0 +1,29 @@
+---
+- name: Configure Jenkins
+  hosts: jenkins
+  become: true
+  tasks:
+    - name: Install OpenJDK 11
+      apt:
+        name: "openjdk-11-jre"
+        update_cache: true
+        state: present
+    - name: Install Fontconfig
+      apt:
+        name: "fontconfig"
+        state: present
+    - name: Setup Jenkins
+      block:
+        - name: Add Jenkins keyring
+          get_url:
+            url: "https://pkg.jenkins.io/debian-stable/jenkins.io.key"
+            dest: "/usr/share/keyrings/jenkins-keyring.asc"
+        - name: Add Jenkins repository
+          apt_repository:
+            filename: "jenkins"
+            repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+            state: present
+        - name: Install Jenkins
+          apt:
+            name: "jenkins"
+            state: present

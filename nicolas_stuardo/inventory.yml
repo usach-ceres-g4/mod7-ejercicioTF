@@ -1,0 +1,7 @@
+all:
+  children:
+    jenkins:
+      hosts:
+        jenkins1:
+          ansible_host: usach-devops-s2g4-ns.eastus2.cloudapp.azure.com
+          ansible_user: nico
